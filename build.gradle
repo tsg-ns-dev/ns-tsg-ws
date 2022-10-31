@@ -1,0 +1,85 @@
+plugins {
+  id 'idea'
+  id "no.nils.wsdl2java" version "0.12"
+  id 'net.researchgate.release' version '3.0.2'
+  id 'maven'
+  id 'signing'
+}
+
+task sourceJar(type: Jar) {
+  classifier = 'sources'
+  from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar) {
+  classifier = 'javadoc'
+  from javadoc
+}
+
+artifacts {
+  archives javadocJar, sourceJar
+}
+
+wsdl2java{
+  wsdlsToGenerate = [
+          ['-p','com.tsg.netsuite.client', '-autoNameResolution', '-mark-generated',
+           '-xjc','-b', "$projectDir/src/main/resources/wsdl/bindings.xml",
+           "$projectDir/src/main/resources/wsdl/SuiteTalk.wsdl"]
+  ]
+  generatedWsdlDir = file("$projectDir/generatedsources")
+  wsdlDir = file("$projectDir/src/main/resources/wsdl")
+}
+
+wsdl2javaExt {
+  deleteGeneratedSourcesOnClean = false
+}
+
+signing {
+  sign configurations.archives
+}
+
+uploadArchives {
+  repositories {
+    mavenDeployer {
+      beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+      repository(url: "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/") {
+        authentication(userName: ossrhUsername, password: ossrhPassword)
+      }
+
+      snapshotRepository(url: "https://s01.oss.sonatype.org/content/repositories/snapshots/") {
+        authentication(userName: ossrhUsername, password: ossrhPassword)
+      }
+
+      pom.project {
+        name 'NS WS'
+        description 'Client API for NS Web Services'
+        packaging 'jar'
+        url 'https://www.netsuite.com/portal/developers/dev-resources.shtml'
+
+        scm {
+          connection 'git@github.com:klpegues/ns-tsg-ws.git'
+          developerConnection 'git@github.com:klpegues/ns-tsg-ws.git'
+          url 'https://github.com/klpegues/ns-tsg-ws.git'
+        }
+
+        licenses {
+          license {
+            name 'The Apache License, Version 2.0'
+            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+          }
+        }
+
+        developers {
+          developer {
+            id 'klpegues'
+            name 'tsg'
+            email 'klpegues@gmail.com'
+          }
+        }
+      }
+    }
+  }
+}
+
+afterReleaseBuild.finalizedBy(uploadArchives)
